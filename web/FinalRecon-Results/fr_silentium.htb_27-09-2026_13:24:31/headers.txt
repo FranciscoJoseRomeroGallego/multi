@@ -1,0 +1,8 @@
+Server: nginx/1.24.0 (Ubuntu)
+Date: Sun, 27 Sep 2026 11:24:32 GMT
+Content-Type: text/html
+Last-Modified: Mon, 16 Mar 2026 22:21:29 GMT
+Transfer-Encoding: chunked
+Connection: keep-alive
+ETag: W/"69b88269-2231"
+Content-Encoding: gzip

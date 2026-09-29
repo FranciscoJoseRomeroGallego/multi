@@ -1,0 +1,1008 @@
+#!/bin/bash
+
+# ================================================================
+# FFUF WEB FUZZING
+# Directorios / Archivos
+#
+# Controles selector extensiones:
+#   ↑ ↓       Mover
+#   SPACE     Seleccionar / deseleccionar
+#   ENTER     Confirmar
+#   Q         Cancelar
+# ================================================================
+
+
+# ----------------------------------------------------------------
+# FUNCIONES GENERALES
+# ----------------------------------------------------------------
+
+pause_error() {
+    echo
+    read -r -p "Pulsa ENTER para volver..."
+}
+
+
+# ----------------------------------------------------------------
+# AVISO FUZZ
+# ----------------------------------------------------------------
+
+clear
+
+echo
+echo "╔══════════════════════════════════════════════════════════════════════╗"
+echo "║                                                                      ║"
+echo "║                     !!! IMPORTANTE - FUZZ !!!                       ║"
+echo "║                                                                      ║"
+echo "║  Debes poner FUZZ EXACTAMENTE en el lugar que quieras fuzzear.      ║"
+echo "║                                                                      ║"
+echo "║  Ejemplos:                                                           ║"
+echo "║                                                                      ║"
+echo "║    http://10.10.10.10/FUZZ                                          ║"
+echo "║    http://10.10.10.10/api/FUZZ                                      ║"
+echo "║    http://10.10.10.10/admin/FUZZ                                    ║"
+echo "║                                                                      ║"
+echo "╚══════════════════════════════════════════════════════════════════════╝"
+echo
+
+read -e -p "URL: " url
+
+
+# ----------------------------------------------------------------
+# COMPROBAR FUZZ
+# ----------------------------------------------------------------
+
+if [[ "$url" != *FUZZ* ]]; then
+
+    clear
+
+    echo
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║                                                                      ║"
+    echo "║                ❌ ERROR: FALTA FUZZ EN LA URL ❌                    ║"
+    echo "║                                                                      ║"
+    echo "║  Ejemplo:                                                           ║"
+    echo "║                                                                      ║"
+    echo "║       http://10.10.10.10/FUZZ                                      ║"
+    echo "║                                                                      ║"
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
+    echo
+
+    pause_error
+    exit 1
+fi
+
+
+# ----------------------------------------------------------------
+# VARIABLES
+# ----------------------------------------------------------------
+
+search_type=""
+search_type_name=""
+
+wordlist=""
+
+extensions=""
+extensions_display=""
+
+mode_name=""
+threads=40
+rate=0
+delay=""
+
+
+# ----------------------------------------------------------------
+# ELEGIR QUÉ BUSCAR
+# ----------------------------------------------------------------
+
+search_type_exec() {
+
+    while true; do
+
+        clear
+
+        echo
+        echo "╔══════════════════════════════════════════════════════════════════════╗"
+        echo "║                         TIPO DE BÚSQUEDA                             ║"
+        echo "╠══════════════════════════════════════════════════════════════════════╣"
+        echo "║                                                                      ║"
+        echo "║   [1] DIRECTORIOS                                                     ║"
+        echo "║                                                                      ║"
+        echo "║       Busca directorios y rutas accesibles.                          ║"
+        echo "║                                                                      ║"
+        echo "║       Ejemplo:                                                       ║"
+        echo "║       http://10.10.10.10/FUZZ                                       ║"
+        echo "║                                                                      ║"
+        echo "║   [2] ARCHIVOS                                                        ║"
+        echo "║                                                                      ║"
+        echo "║       Busca archivos utilizando extensiones seleccionadas.          ║"
+        echo "║                                                                      ║"
+        echo "║       Ejemplo:                                                       ║"
+        echo "║       http://10.10.10.10/admin/FUZZ                                 ║"
+        echo "║                                                                      ║"
+        echo "╚══════════════════════════════════════════════════════════════════════╝"
+        echo
+
+        read -r -p "       ╚══════> " search_type
+
+        case "$search_type" in
+
+            1)
+                search_type_name="DIRECTORIOS"
+                break
+                ;;
+
+            2)
+                search_type_name="ARCHIVOS"
+                break
+                ;;
+
+            *)
+                echo
+                echo "❌ Opción no válida."
+                sleep 1
+                ;;
+
+        esac
+
+    done
+}
+
+
+search_type_exec
+
+
+# ----------------------------------------------------------------
+# WORDLIST DIRECTORIOS
+# ----------------------------------------------------------------
+
+directory_config() {
+
+    while true; do
+
+        clear
+
+        echo
+        echo "╔══════════════════════════════════════════════════════════╗"
+        echo "║                  WORDLIST DIRECTORIOS                  ║"
+        echo "╠══════════════════════════════════════════════════════════╣"
+        echo "║                                                          ║"
+        echo "║   [1] directory-medium                                   ║"
+        echo "║                                                          ║"
+        echo "║       DirBuster 2007 - medium                            ║"
+        echo "║                                                          ║"
+        echo "║   [ENTER] DEFAULT                                        ║"
+        echo "║                                                          ║"
+        echo "╚══════════════════════════════════════════════════════════╝"
+        echo
+
+        read -r -p "       ╚══════> " input
+
+        case "$input" in
+
+            1|"")
+                wordlist="/usr/share/seclists/Discovery/Web-Content/DirBuster-2007_directory-list-2.3-medium.txt"
+                break
+                ;;
+
+            *)
+                echo
+                echo "❌ Opción no válida."
+                sleep 1
+                ;;
+
+        esac
+
+    done
+}
+
+
+# ----------------------------------------------------------------
+# WORDLIST ARCHIVOS
+# ----------------------------------------------------------------
+
+file_wordlist_config() {
+
+    while true; do
+
+        clear
+
+        echo
+        echo "╔══════════════════════════════════════════════════════════╗"
+        echo "║                    WORDLIST ARCHIVOS                    ║"
+        echo "╠══════════════════════════════════════════════════════════╣"
+        echo "║                                                          ║"
+        echo "║   [1] common.txt                                         ║"
+        echo "║                                                          ║"
+        echo "║       /usr/share/seclists/Discovery/Web-Content/         ║"
+        echo "║       common.txt                                         ║"
+        echo "║                                                          ║"
+        echo "║   [ENTER] DEFAULT                                        ║"
+        echo "║                                                          ║"
+        echo "╚══════════════════════════════════════════════════════════╝"
+        echo
+
+        read -r -p "       ╚══════> " input
+
+        case "$input" in
+
+            1|"")
+                wordlist="/usr/share/seclists/Discovery/Web-Content/common.txt"
+                break
+                ;;
+
+            *)
+                echo
+                echo "❌ Opción no válida."
+                sleep 1
+                ;;
+
+        esac
+
+    done
+}
+
+
+# ----------------------------------------------------------------
+# DEFAULT DE EXTENSIONES
+# ----------------------------------------------------------------
+
+apply_default_extensions() {
+
+    for ((i=0; i<${#extensions_list[@]}; i++)); do
+        selected[$i]=0
+    done
+
+    for default_ext in "${default_extensions[@]}"; do
+
+        for ((i=0; i<${#extensions_list[@]}; i++)); do
+
+            if [[ "${extensions_list[$i]}" == "$default_ext" ]]; then
+                selected[$i]=1
+                break
+            fi
+
+        done
+
+    done
+}
+
+
+# ----------------------------------------------------------------
+# DIBUJAR SELECTOR DE EXTENSIONES
+# ----------------------------------------------------------------
+
+draw_extension_menu() {
+
+    clear
+
+    echo
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║                       SELECCIONAR EXTENSIONES                       ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    echo "║                                                                      ║"
+    echo "║   ↑ ↓       Mover                                                    ║"
+    echo "║   SPACE     Seleccionar / deseleccionar                              ║"
+    echo "║   ENTER     Confirmar                                                 ║"
+    echo "║   Q         Cancelar                                                  ║"
+    echo "║                                                                      ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+
+
+    # ----------------------------------------------------------------
+    # DEFAULT
+    # ----------------------------------------------------------------
+
+    if ((cursor == 0)); then
+        printf "║  ➜  [DEFAULT]  .php,.html,.txt,.bak,.js                            ║\n"
+    else
+        printf "║     [DEFAULT]  .php,.html,.txt,.bak,.js                             ║\n"
+    fi
+
+
+    # ----------------------------------------------------------------
+    # EXTENSIONES
+    # ----------------------------------------------------------------
+
+    for ((i=0; i<${#extensions_list[@]}; i++)); do
+
+        index=$((i + 1))
+
+        if ((cursor == index)); then
+            prefix="➜"
+        else
+            prefix=" "
+        fi
+
+        if ((selected[$i] == 1)); then
+            checkbox="[X]"
+        else
+            checkbox="[ ]"
+        fi
+
+        printf "║  %s  %s .%-57s ║\n" \
+            "$prefix" \
+            "$checkbox" \
+            "${extensions_list[$i]}"
+
+    done
+
+
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+
+
+    # ----------------------------------------------------------------
+    # MOSTRAR SELECCIONADAS
+    # ----------------------------------------------------------------
+
+    selected_display=""
+
+    for ((i=0; i<${#extensions_list[@]}; i++)); do
+
+        if ((selected[$i] == 1)); then
+
+            if [[ -z "$selected_display" ]]; then
+                selected_display=".${extensions_list[$i]}"
+            else
+                selected_display="$selected_display,.${extensions_list[$i]}"
+            fi
+
+        fi
+
+    done
+
+
+    if [[ -z "$selected_display" ]]; then
+
+        printf "║  Seleccionadas: ninguna                                              ║\n"
+
+    else
+
+        # Limitar para que no rompa visualmente el cuadro
+        if (( ${#selected_display} > 58 )); then
+            selected_preview="${selected_display:0:55}..."
+        else
+            selected_preview="$selected_display"
+        fi
+
+        printf "║  Seleccionadas: %-57s ║\n" "$selected_preview"
+
+    fi
+
+
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
+}
+
+
+# ----------------------------------------------------------------
+# SELECTOR INTERACTIVO DE EXTENSIONES
+# ----------------------------------------------------------------
+
+extension_selector() {
+
+    extensions_list=(
+        "php"
+        "html"
+        "htm"
+        "txt"
+        "js"
+        "json"
+        "xml"
+        "css"
+        "bak"
+        "old"
+        "backup"
+        "zip"
+        "tar"
+        "gz"
+        "sql"
+        "conf"
+        "config"
+        "ini"
+        "log"
+        "env"
+        "yml"
+        "yaml"
+        "asp"
+        "aspx"
+        "jsp"
+        "cgi"
+        "pl"
+        "py"
+        "rb"
+        "sh"
+    )
+
+
+    default_extensions=(
+        "php"
+        "html"
+        "txt"
+        "bak"
+        "js"
+    )
+
+
+    declare -a selected
+
+
+    for ((i=0; i<${#extensions_list[@]}; i++)); do
+        selected[$i]=0
+    done
+
+
+    # Inicialmente DEFAULT
+    apply_default_extensions
+
+
+    # Cursor:
+    # 0 = DEFAULT
+    # 1..N = extensiones
+
+    cursor=0
+    total=$((${#extensions_list[@]} + 1))
+
+
+    while true; do
+
+        draw_extension_menu
+
+
+        # --------------------------------------------------------
+        # LEER TECLA
+        # --------------------------------------------------------
+
+        IFS= read -rsn1 key
+
+
+        case "$key" in
+
+
+            # ----------------------------------------------------
+            # ENTER
+            # ----------------------------------------------------
+
+            "")
+                break
+                ;;
+
+
+            # ----------------------------------------------------
+            # SPACE
+            # ----------------------------------------------------
+
+            " ")
+
+                if ((cursor == 0)); then
+
+                    # Volver a DEFAULT
+                    apply_default_extensions
+
+                else
+
+                    index=$((cursor - 1))
+
+                    if ((selected[$index] == 1)); then
+                        selected[$index]=0
+                    else
+                        selected[$index]=1
+                    fi
+
+                fi
+
+                ;;
+
+
+            # ----------------------------------------------------
+            # Q
+            # ----------------------------------------------------
+
+            q|Q)
+
+                return 1
+                ;;
+
+
+            # ----------------------------------------------------
+            # FLECHAS
+            # ----------------------------------------------------
+
+            $'\x1b')
+
+                IFS= read -rsn2 key
+
+                case "$key" in
+
+                    "[A")
+
+                        ((cursor--))
+
+                        if ((cursor < 0)); then
+                            cursor=$((total - 1))
+                        fi
+
+                        ;;
+
+                    "[B")
+
+                        ((cursor++))
+
+                        if ((cursor >= total)); then
+                            cursor=0
+                        fi
+
+                        ;;
+
+                esac
+
+                ;;
+
+        esac
+
+    done
+
+
+    # ----------------------------------------------------------------
+    # CONSTRUIR EXTENSIONES
+    # ----------------------------------------------------------------
+
+    extensions=""
+
+    for ((i=0; i<${#extensions_list[@]}; i++)); do
+
+        if ((selected[$i] == 1)); then
+
+            if [[ -z "$extensions" ]]; then
+                extensions=".${extensions_list[$i]}"
+            else
+                extensions="$extensions,.${extensions_list[$i]}"
+            fi
+
+        fi
+
+    done
+
+
+    # ----------------------------------------------------------------
+    # COMPROBAR SELECCIÓN
+    # ----------------------------------------------------------------
+
+    if [[ -z "$extensions" ]]; then
+
+        clear
+
+        echo
+        echo "╔══════════════════════════════════════════════════════════╗"
+        echo "║                                                          ║"
+        echo "║      ❌ NO HAS SELECCIONADO EXTENSIONES ❌             ║"
+        echo "║                                                          ║"
+        echo "║      Debes seleccionar al menos una extensión.          ║"
+        echo "║                                                          ║"
+        echo "╚══════════════════════════════════════════════════════════╝"
+        echo
+
+        sleep 2
+
+        extension_selector
+        return $?
+
+    fi
+
+
+    extensions_display="$extensions"
+
+    return 0
+}
+
+
+# ----------------------------------------------------------------
+# ELEGIR MODO
+# ----------------------------------------------------------------
+
+mode_exec() {
+
+    while true; do
+
+        clear
+
+        echo
+        echo "╔══════════════════════════════════════════════════════════════════════╗"
+        echo "║                         MODO DE ESCANEO                              ║"
+        echo "╠══════════════════════════════════════════════════════════════════════╣"
+        echo "║                                                                      ║"
+        echo "║   [1] SAFE                                                            ║"
+        echo "║                                                                      ║"
+        echo "║       Perfil conservador para pentesting autorizado.                 ║"
+        echo "║                                                                      ║"
+        echo "║       • 3 hilos                                                       ║"
+        echo "║       • Máximo 3 peticiones/segundo                                  ║"
+        echo "║       • Delay aleatorio 0.3 - 1.0 segundos                           ║"
+        echo "║       • Baja considerablemente la carga generada                     ║"
+        echo "║                                                                      ║"
+        echo "║   [2] NORMAL                                                          ║"
+        echo "║                                                                      ║"
+        echo "║       Configuración estándar.                                        ║"
+        echo "║                                                                      ║"
+        echo "║       • 40 hilos                                                      ║"
+        echo "║       • Sin límite artificial de requests/segundo                    ║"
+        echo "║       • Sin delay adicional                                           ║"
+        echo "║                                                                      ║"
+        echo "║   [3] ULTRA                                                           ║"
+        echo "║                                                                      ║"
+        echo "║       Prioriza la velocidad de escaneo.                              ║"
+        echo "║                                                                      ║"
+        echo "║       • 100 hilos                                                     ║"
+        echo "║       • Sin límite artificial de requests/segundo                    ║"
+        echo "║       • Sin delay                                                     ║"
+        echo "║       • Mucha mayor carga sobre el objetivo                           ║"
+        echo "║                                                                      ║"
+        echo "╚══════════════════════════════════════════════════════════════════════╝"
+        echo
+
+        read -r -p "       ╚══════> " mode
+
+        case "$mode" in
+
+            1)
+
+                mode_name="SAFE"
+                threads=3
+                rate=3
+                delay="0.3-1.0"
+
+                break
+                ;;
+
+
+            2)
+
+                mode_name="NORMAL"
+                threads=40
+                rate=0
+                delay=""
+
+                break
+                ;;
+
+
+            3)
+
+                mode_name="ULTRA"
+                threads=100
+                rate=0
+                delay=""
+
+                break
+                ;;
+
+
+            *)
+
+                echo
+                echo "❌ Opción no válida."
+                sleep 1
+                ;;
+
+        esac
+
+    done
+}
+
+
+# ----------------------------------------------------------------
+# CONFIGURACIÓN SEGÚN TIPO
+# ----------------------------------------------------------------
+
+if [[ "$search_type_name" == "DIRECTORIOS" ]]; then
+
+    directory_config
+
+else
+
+    file_wordlist_config
+
+    if ! extension_selector; then
+
+        exit 1
+
+    fi
+
+fi
+
+
+# ----------------------------------------------------------------
+# SELECCIONAR MODO
+# ----------------------------------------------------------------
+
+mode_exec
+
+
+# ----------------------------------------------------------------
+# COMPROBAR DEPENDENCIAS
+# ----------------------------------------------------------------
+
+if ! command -v ffuf >/dev/null 2>&1; then
+
+    clear
+
+    echo
+    echo "❌ ERROR: ffuf no está instalado."
+    echo
+
+    pause_error
+    exit 1
+
+fi
+
+
+if ! command -v jq >/dev/null 2>&1; then
+
+    clear
+
+    echo
+    echo "╔══════════════════════════════════════════════════════════╗"
+    echo "║                 ❌ FALTA DEPENDENCIA                    ║"
+    echo "╠══════════════════════════════════════════════════════════╣"
+    echo "║                                                          ║"
+    echo "║  jq no está instalado.                                  ║"
+    echo "║                                                          ║"
+    echo "║  Instálalo con:                                         ║"
+    echo "║                                                          ║"
+    echo "║      sudo apt install jq                                ║"
+    echo "║                                                          ║"
+    echo "╚══════════════════════════════════════════════════════════╝"
+    echo
+
+    pause_error
+    exit 1
+
+fi
+
+
+# ----------------------------------------------------------------
+# COMPROBAR WORDLIST
+# ----------------------------------------------------------------
+
+if [[ ! -f "$wordlist" ]]; then
+
+    clear
+
+    echo
+    echo "╔══════════════════════════════════════════════════════════╗"
+    echo "║                    ❌ ERROR WORDLIST                    ║"
+    echo "╠══════════════════════════════════════════════════════════╣"
+    echo
+    echo "  No existe:"
+    echo
+    echo "  $wordlist"
+    echo
+    echo "╚══════════════════════════════════════════════════════════╝"
+    echo
+
+    pause_error
+    exit 1
+
+fi
+
+
+# ----------------------------------------------------------------
+# ARCHIVOS TEMPORALES
+# ----------------------------------------------------------------
+
+tmp_json=$(mktemp --suffix=.json)
+tmp_wordlist=$(mktemp)
+
+trap 'rm -f "$tmp_json" "$tmp_wordlist"' EXIT
+
+
+# ----------------------------------------------------------------
+# LIMPIAR WORDLIST
+#
+# Elimina:
+#   - líneas vacías
+#   - comentarios
+#   - CR de Windows
+# ----------------------------------------------------------------
+
+sed 's/\r$//' "$wordlist" |
+    grep -vE '^[[:space:]]*$|^[[:space:]]*#' \
+    > "$tmp_wordlist"
+
+
+# ----------------------------------------------------------------
+# CONFIGURACIÓN FINAL
+# ----------------------------------------------------------------
+
+clear
+
+echo
+echo "╔══════════════════════════════════════════════════════════════════════╗"
+echo "║                         CONFIGURACIÓN                                ║"
+echo "╠══════════════════════════════════════════════════════════════════════╣"
+echo "║                                                                      ║"
+
+printf "║  Tipo      : %-57s ║\n" "$search_type_name"
+printf "║  URL       : %-57s ║\n" "$url"
+printf "║  Modo      : %-57s ║\n" "$mode_name"
+printf "║  Hilos     : %-57s ║\n" "$threads"
+
+
+if ((rate == 0)); then
+
+    printf "║  Rate      : %-57s ║\n" "ILIMITADO"
+
+else
+
+    printf "║  Rate      : %-57s ║\n" "$rate req/s"
+
+fi
+
+
+if [[ -n "$delay" ]]; then
+
+    printf "║  Delay     : %-57s ║\n" "$delay s"
+
+else
+
+    printf "║  Delay     : %-57s ║\n" "NINGUNO"
+
+fi
+
+
+printf "║  Wordlist  : %-57s ║\n" "$(basename "$wordlist")"
+
+
+if [[ "$search_type_name" == "ARCHIVOS" ]]; then
+
+    printf "║  Extens.   : %-57s ║\n" "$extensions_display"
+
+fi
+
+
+echo "║                                                                      ║"
+echo "╚══════════════════════════════════════════════════════════════════════╝"
+echo
+
+echo "🚀 Ejecutando FFUF..."
+echo
+
+
+# ----------------------------------------------------------------
+# CONSTRUIR ARGUMENTOS FFUF
+# ----------------------------------------------------------------
+
+ffuf_args=(
+
+    -u "$url"
+
+    -w "$tmp_wordlist"
+
+    -t "$threads"
+
+    -mc 200,204,301,302,307,401,403,405,500
+
+    -of json
+
+    -o "$tmp_json"
+
+    -noninteractive
+
+    -recursion 
+
+)
+
+
+# ----------------------------------------------------------------
+# RATE
+# ----------------------------------------------------------------
+
+if ((rate > 0)); then
+
+    ffuf_args+=(
+        -rate "$rate"
+    )
+
+fi
+
+
+# ----------------------------------------------------------------
+# DELAY
+# ----------------------------------------------------------------
+
+if [[ -n "$delay" ]]; then
+
+    ffuf_args+=(
+        -p "$delay"
+    )
+
+fi
+
+
+# ----------------------------------------------------------------
+# ARCHIVOS
+# ----------------------------------------------------------------
+
+if [[ "$search_type_name" == "ARCHIVOS" ]]; then
+
+    ffuf_args+=(
+        -e "$extensions"
+        -v
+    )
+
+fi
+
+
+# ----------------------------------------------------------------
+# EJECUTAR
+# ----------------------------------------------------------------
+
+ffuf "${ffuf_args[@]}"
+
+
+# ----------------------------------------------------------------
+# RESULTADOS
+# ----------------------------------------------------------------
+
+clear
+
+echo
+echo "╔══════════════════════════════════════════════════════════════════════╗"
+echo "║                         RESULTADOS ENCONTRADOS                      ║"
+echo "╠══════════════════════════════════════════════════════════════════════╣"
+echo
+
+printf "%-35s %-8s %-10s %s\n" \
+    "ENCONTRADO" \
+    "STATUS" \
+    "SIZE" \
+    "URL"
+
+echo "────────────────────────────────────────────────────────────────────────────────"
+
+
+# ----------------------------------------------------------------
+# EXTRAER RESULTADOS DEL JSON
+# ----------------------------------------------------------------
+
+results=$(jq -r '
+    .results[]
+    | select(.url != null)
+    | select(.url != "")
+    | [
+        (.input.FUZZ // "-"),
+        (.status // "-"),
+        (.length // "-"),
+        .url
+      ]
+    | @tsv
+' "$tmp_json" 2>/dev/null)
+
+
+# ----------------------------------------------------------------
+# MOSTRAR RESULTADOS
+# ----------------------------------------------------------------
+
+if [[ -z "$results" ]]; then
+
+    echo
+    echo "                         No se encontraron resultados."
+    echo
+
+else
+
+    while IFS=$'\t' read -r found status size result_url; do
+
+        printf "%-35s %-8s %-10s %s\n" \
+            "$found" \
+            "$status" \
+            "$size" \
+            "$result_url"
+
+    done <<< "$results"
+
+fi
+
+
+echo
+echo "════════════════════════════════════════════════════════════════════════════════"
+echo
+```

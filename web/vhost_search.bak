@@ -1,0 +1,187 @@
+#!/bin/bash
+
+# ================================================================
+#  VHost Discovery - Gobuster
+# ================================================================
+
+COMMON_WORDLIST="/usr/share/seclists/Discovery/Web-Content/common.txt"
+SYSTEM_WORDLIST="/usr/share/wordlists/dirb/common.txt"
+
+banner() {
+    clear
+    echo
+    echo "   ╔══════════════════════════════════════════════════════╗"
+    echo "   ║              GOBUSTER VHOST DISCOVERY              ║"
+    echo "   ╚══════════════════════════════════════════════════════╝"
+    echo
+}
+
+pause_screen() {
+    echo
+    read -r -p "   Pulsa ENTER para salir..."
+}
+
+choose_wordlist() {
+    local input
+
+    while true; do
+        clear
+        banner
+        echo "   Selecciona la wordlist"
+        echo
+        echo "   ╚══(1) common.txt"
+        echo "   ║      /usr/share/seclists/Discovery/Web-Content/common.txt"
+        echo "   ║"
+        echo "   ╚══(2) Otra wordlist"
+        echo
+        read -e -r -p " ╚══════> " input
+
+        case "$input" in
+            1)
+                WORDLIST="$COMMON_WORDLIST"
+                WORDLIST_NAME="common.txt"
+                break
+                ;;
+                
+            2)
+                read -e -r -p "   Ruta de la wordlist: " WORDLIST
+                WORDLIST="${WORDLIST/#\~/$HOME}"
+
+                if [[ -z "$WORDLIST" ]]; then
+                    echo "   La ruta no puede estar vacía."
+                    sleep 1
+                    continue
+                fi
+
+                if [[ ! -f "$WORDLIST" || ! -r "$WORDLIST" ]]; then
+                    echo "   La wordlist no existe o no se puede leer: $WORDLIST"
+                    sleep 2
+                    continue
+                fi
+
+                WORDLIST_NAME="$(basename "$WORDLIST")"
+                break
+                ;;
+            *)
+                echo "   Opción no válida."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+choose_speed() {
+    local input
+
+    while true; do
+        clear
+        banner
+        echo "   Selecciona el modo de velocidad"
+        echo
+        echo "   ╚══(1) SLOW"
+        echo "   ║      5 hilos + 500ms de espera"
+        echo "   ║      Menor tasa de peticiones"
+        echo "   ║"
+        echo "   ╠══(2) MEDIUM"
+        echo "   ║      20 hilos + 100ms de espera"
+        echo "   ║      Equilibrado"
+        echo "   ║"
+        echo "   ╚══(3) FAST"
+        echo "          50 hilos + sin espera"
+        echo "          Muchas peticiones simultáneas"
+        echo
+        read -r -p "       ╚══════> " input
+
+        case "$input" in
+            1)
+                THREADS=5
+                DELAY="500ms"
+                SPEED_NAME="SLOW"
+                break
+                ;;
+            2)
+                THREADS=20
+                DELAY="100ms"
+                SPEED_NAME="MEDIUM"
+                break
+                ;;
+            3)
+                THREADS=50
+                DELAY="0"
+                SPEED_NAME="FAST"
+                break
+                ;;
+            *)
+                echo "   Opción no válida."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+main() {
+    local target
+
+    banner
+    echo "   Introduce el dominio objetivo."
+    echo "   Ejemplo: inlanefreight.htb:81"
+    echo "   También puedes indicar http:// o https://"
+    echo
+    read -e -r -p "   Dominio: " target
+
+    if [[ -z "$target" ]]; then
+        echo "   El dominio no puede estar vacío."
+        pause_screen
+        return
+    fi
+
+    # Si el usuario no indica protocolo, usamos HTTP.
+    if [[ "$target" != http://* && "$target" != https://* ]]; then
+        target="http://$target"
+    fi
+
+    choose_wordlist
+    choose_speed
+
+    if [[ ! -f "$WORDLIST" || ! -r "$WORDLIST" ]]; then
+        clear
+        banner
+        echo "   ERROR: no se puede leer la wordlist seleccionada."
+        echo "   Ruta: $WORDLIST"
+        pause_screen
+        return
+    fi
+
+    clear
+    banner
+    echo "   ┌─ CONFIGURACIÓN ─────────────────────────────────────┐"
+    echo "   │ Objetivo  : $target"
+    echo "   │ Wordlist  : $WORDLIST_NAME"
+    echo "   │ Modo      : $SPEED_NAME"
+    echo "   │ Hilos     : $THREADS"
+    echo "   │ Delay     : $DELAY"
+    echo "   │ VHost     : --append-domain"
+    echo "   └──────────────────────────────────────────────────────┘"
+    echo
+
+    echo "   Comando:"
+    echo "   gobuster vhost -u \"$target\" -w \"$WORDLIST\" -t $THREADS --delay $DELAY --append-domain"
+    echo
+    read -r -p "   Pulsa ENTER para comenzar o Ctrl+C para cancelar..."
+    echo
+
+    gobuster vhost \
+        -u "$target" \
+        -w "$WORDLIST" \
+        -t "$THREADS" \
+        --delay "$DELAY" \
+        --append-domain
+
+    echo
+    echo "   ════════════════════════════════════════════════════════"
+    echo "   VHost discovery finalizado."
+    echo "   ════════════════════════════════════════════════════════"
+    pause_screen
+}
+
+main

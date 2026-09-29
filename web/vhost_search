@@ -1,0 +1,358 @@
+#!/bin/bash
+
+# ================================================================
+#  VHost Discovery - Gobuster
+# ================================================================
+
+COMMON_WORDLIST="/usr/share/seclists/Discovery/Web-Content/common.txt"
+SYSTEM_WORDLIST="/usr/share/wordlists/dirb/common.txt"
+
+# ================================================================
+#  DIRECTORIO DE RESULTADOS
+# ================================================================
+
+RESULTS_DIR="/home/user/herramientas/web/Vhosts_Discover"
+
+banner() {
+    clear
+    echo
+    echo "   ╔══════════════════════════════════════════════════════╗"
+    echo "   ║              GOBUSTER VHOST DISCOVERY              ║"
+    echo "   ╚══════════════════════════════════════════════════════╝"
+    echo
+}
+
+pause_screen() {
+    echo
+    read -r -p "   Pulsa ENTER para salir..."
+}
+
+choose_wordlist() {
+    local input
+
+    while true; do
+        clear
+        banner
+        echo "   Selecciona la wordlist"
+        echo
+        echo "   ╚══(1) common.txt"
+        echo "   ║      /usr/share/seclists/Discovery/Web-Content/common.txt"
+        echo "   ║"
+        echo "   ╚══(2) Otra wordlist"
+        echo
+        read -e -r -p " ╚══════> " input
+
+        case "$input" in
+            1)
+                WORDLIST="$COMMON_WORDLIST"
+                WORDLIST_NAME="common.txt"
+                break
+                ;;
+                
+            2)
+                read -e -r -p "   Ruta de la wordlist: " WORDLIST
+                WORDLIST="${WORDLIST/#\~/$HOME}"
+
+                if [[ -z "$WORDLIST" ]]; then
+                    echo "   La ruta no puede estar vacía."
+                    sleep 1
+                    continue
+                fi
+
+                if [[ ! -f "$WORDLIST" || ! -r "$WORDLIST" ]]; then
+                    echo "   La wordlist no existe o no se puede leer: $WORDLIST"
+                    sleep 2
+                    continue
+                fi
+
+                WORDLIST_NAME="$(basename "$WORDLIST")"
+                break
+                ;;
+            *)
+                echo "   Opción no válida."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+choose_speed() {
+    local input
+
+    while true; do
+        clear
+        banner
+        echo "   Selecciona el modo de velocidad"
+        echo
+        echo "   ╚══(1) SLOW"
+        echo "   ║      5 hilos + 500ms de espera"
+        echo "   ║      Menor tasa de peticiones"
+        echo "   ║"
+        echo "   ╠══(2) MEDIUM"
+        echo "   ║      20 hilos + 100ms de espera"
+        echo "   ║      Equilibrado"
+        echo "   ║"
+        echo "   ╚══(3) FAST"
+        echo "          50 hilos + sin espera"
+        echo "          Muchas peticiones simultáneas"
+        echo
+        read -r -p "       ╚══════> " input
+
+        case "$input" in
+            1)
+                THREADS=5
+                DELAY="500ms"
+                SPEED_NAME="SLOW"
+                break
+                ;;
+            2)
+                THREADS=20
+                DELAY="100ms"
+                SPEED_NAME="MEDIUM"
+                break
+                ;;
+            3)
+                THREADS=50
+                DELAY="0"
+                SPEED_NAME="FAST"
+                break
+                ;;
+            *)
+                echo "   Opción no válida."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+main() {
+    local target
+
+    banner
+    echo "   Introduce el dominio objetivo."
+    echo "   Ejemplo: inlanefreight.htb:81"
+    echo "   También puedes indicar http:// o https://"
+    echo
+    read -e -r -p "   Dominio: " target
+
+    if [[ -z "$target" ]]; then
+        echo "   El dominio no puede estar vacío."
+        pause_screen
+        return
+    fi
+
+    # Si el usuario no indica protocolo, usamos HTTP.
+    if [[ "$target" != http://* && "$target" != https://* ]]; then
+        target="http://$target"
+    fi
+
+    choose_wordlist
+    choose_speed
+
+    if [[ ! -f "$WORDLIST" || ! -r "$WORDLIST" ]]; then
+        clear
+        banner
+        echo "   ERROR: no se puede leer la wordlist seleccionada."
+        echo "   Ruta: $WORDLIST"
+        pause_screen
+        return
+    fi
+
+    clear
+    banner
+    echo "   ┌─ CONFIGURACIÓN ─────────────────────────────────────┐"
+    echo "   │ Objetivo  : $target"
+    echo "   │ Wordlist  : $WORDLIST_NAME"
+    echo "   │ Modo      : $SPEED_NAME"
+    echo "   │ Hilos     : $THREADS"
+    echo "   │ Delay     : $DELAY"
+    echo "   │ VHost     : --append-domain"
+    echo "   └──────────────────────────────────────────────────────┘"
+    echo
+
+    echo "   Comando:"
+    echo "   gobuster vhost -u \"$target\" -w \"$WORDLIST\" -t $THREADS --delay $DELAY --append-domain"
+    echo
+    read -r -p "   Pulsa ENTER para comenzar o Ctrl+C para cancelar..."
+    echo
+
+    # ============================================================
+    #  ARCHIVO TEMPORAL PARA CAPTURAR GOBUSTER
+    # ============================================================
+
+    TMP_OUTPUT=$(mktemp)
+
+    # ============================================================
+    #  EJECUTAR GOBUSTER
+    # ============================================================
+
+    gobuster vhost \
+        -u "$target" \
+        -w "$WORDLIST" \
+        -t "$THREADS" \
+        --delay "$DELAY" \
+        --append-domain \
+        2>&1 | tee "$TMP_OUTPUT"
+
+    # ============================================================
+    #  CREAR DIRECTORIO DE RESULTADOS
+    # ============================================================
+
+    mkdir -p "$RESULTS_DIR"
+
+    # ============================================================
+    #  FECHA Y HORA
+    # ============================================================
+
+    TIMESTAMP=$(date '+%Y-%m-%d_%H-%M-%S')
+    READABLE_DATE=$(date '+%Y-%m-%d %H:%M:%S')
+
+    # Obtener nombre limpio del objetivo para el archivo
+    TARGET_NAME=$(echo "$target" | sed -E 's#https?://##')
+    TARGET_NAME=$(echo "$TARGET_NAME" | tr '/: ' '___')
+
+    OUTPUT_FILE="$RESULTS_DIR/${TARGET_NAME}_${TIMESTAMP}.txt"
+
+    # ============================================================
+    #  PROCESAR RESULTADOS
+    # ============================================================
+
+    RESULTS_200=()
+    RESULTS_403=()
+
+    while IFS= read -r LINE; do
+
+        # Buscar Status: XXX independientemente de la posición
+        if [[ "$LINE" =~ Status:[[:space:]]*([0-9]{3}) ]]; then
+
+            STATUS="${BASH_REMATCH[1]}"
+
+            # Extraer el VHost después de "Found:"
+            VHOST=$(echo "$LINE" | sed -nE 's/.*Found:[[:space:]]*([^[:space:]]+).*/\1/p')
+
+            # Si no se pudo encontrar el VHost, probar otra forma
+            if [[ -z "$VHOST" ]]; then
+                VHOST=$(echo "$LINE" | sed -nE 's/.*VHost:[[:space:]]*([^[:space:]]+).*/\1/p')
+            fi
+
+            [[ -z "$VHOST" ]] && continue
+
+            # ====================================================
+            #  SOLO 200 Y 403
+            # ====================================================
+
+            case "$STATUS" in
+
+                200)
+                    RESULTS_200+=("$VHOST")
+                    ;;
+
+                403)
+                    RESULTS_403+=("$VHOST")
+                    ;;
+
+            esac
+
+        fi
+
+    done < "$TMP_OUTPUT"
+
+    # ============================================================
+    #  RESULTADOS FINALES EN PANTALLA
+    # ============================================================
+
+    echo
+    echo "   ════════════════════════════════════════════════════════"
+    echo "                     RESULTADOS"
+    echo "   ════════════════════════════════════════════════════════"
+    echo
+
+    echo "   [200] EXISTE Y TIENES ACCESO"
+    echo "   ────────────────────────────────────────────────────────"
+
+    if [[ ${#RESULTS_200[@]} -eq 0 ]]; then
+        echo "   Ninguno."
+    else
+        for VHOST in "${RESULTS_200[@]}"; do
+            echo "   [200] http://$VHOST"
+        done
+    fi
+
+    echo
+    echo "   [403] EXISTE PERO NO TIENES ACCESO"
+    echo "   ────────────────────────────────────────────────────────"
+
+    if [[ ${#RESULTS_403[@]} -eq 0 ]]; then
+        echo "   Ninguno."
+    else
+        for VHOST in "${RESULTS_403[@]}"; do
+            echo "   [403] http://$VHOST"
+        done
+    fi
+
+    # ============================================================
+    #  GUARDAR RESULTADOS EN ARCHIVO
+    # ============================================================
+
+    {
+        echo "=============================================================="
+        echo "                 VHOST DISCOVERY"
+        echo "=============================================================="
+        echo
+        echo "Fecha y hora : $READABLE_DATE"
+        echo "Objetivo     : $target"
+        echo "Wordlist     : $WORDLIST_NAME"
+        echo "Modo         : $SPEED_NAME"
+        echo "Hilos        : $THREADS"
+        echo "Delay        : $DELAY"
+        echo
+        echo "=============================================================="
+        echo "             200 - EXISTE Y TIENES ACCESO"
+        echo "=============================================================="
+
+        if [[ ${#RESULTS_200[@]} -eq 0 ]]; then
+            echo "Ninguno."
+        else
+            for VHOST in "${RESULTS_200[@]}"; do
+                echo "[200] http://$VHOST"
+            done
+        fi
+
+        echo
+        echo "=============================================================="
+        echo "             403 - EXISTE PERO NO TIENES ACCESO"
+        echo "=============================================================="
+
+        if [[ ${#RESULTS_403[@]} -eq 0 ]]; then
+            echo "Ninguno."
+        else
+            for VHOST in "${RESULTS_403[@]}"; do
+                echo "[403] http://$VHOST"
+            done
+        fi
+
+        echo
+        echo "=============================================================="
+        echo "                         RESUMEN"
+        echo "=============================================================="
+        echo "VHosts 200 : ${#RESULTS_200[@]}"
+        echo "VHosts 403 : ${#RESULTS_403[@]}"
+        echo "=============================================================="
+
+    } > "$OUTPUT_FILE"
+
+    # ============================================================
+    #  LIMPIAR TEMPORAL
+    # ============================================================
+
+    rm -f "$TMP_OUTPUT"
+
+    echo
+    echo "   Resultados guardados en:"
+    echo "   $OUTPUT_FILE"
+    echo
+
+    pause_screen
+}
+
+main

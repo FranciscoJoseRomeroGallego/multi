@@ -1,0 +1,12 @@
+Total Unique Links Extracted: 4
+Title : web1337
+total_urls_robots: 4
+total_urls_sitemap: 0
+total_urls_css: 0
+total_urls_js: 0
+total_urls_in_js: 0
+total_urls_in_sitemaps: 0
+total_urls_internal: 0
+total_urls_external: 0
+total_urls_images: 0
+total_urls: 4

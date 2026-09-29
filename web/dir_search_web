@@ -1,0 +1,55 @@
+read -e -p "Elige la url: " url
+
+
+
+
+
+wordlist_exec() {
+while true; do
+    clear
+    echo
+    echo "   ╚══(1) bourp-parameter"
+    echo "   ╚══(2) path-traversal"
+    echo "   ╚══(3) subdominios3"
+     echo "  ╚══(4) directory-medium"
+    echo "   ╚══(ENTER) DEFAULT"
+    echo "   ║"
+    read -p "       ╚══════> " input
+
+    case $input in
+        1)
+            wordlist="/home/user//diccionarios/listado-webs/bourp-parameter.txt"
+            break
+            ;;
+        2)
+            wordlist="/home/user//diccionarios/listado-webs/pathtraversal.txt"
+            break
+            ;;
+        3)  
+            wordlist="/home/user//diccionarios/listado-webs/subdominios3.txt"
+            break
+            ;;
+        4)
+            wordlist="/usr/share/seclists/Discovery/Web-Content/DirBuster-2007_directory-list-2.3-medium.txt"
+            break
+            ;;
+
+        *)
+            echo "Default"
+            wordlist=""
+            break
+            ;;
+    esac
+done
+}
+
+
+
+# Ejecutar selector
+wordlist_exec
+
+# Ejecutar comando
+echo "Wordlist seleccionada: $wordlist"
+echo "Ejecutando en: $url"
+
+dirsearch -u "$url" -w "$wordlist" -i 200 

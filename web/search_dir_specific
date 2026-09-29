@@ -1,0 +1,46 @@
+read -e -p "Elige la url: " url
+
+
+
+
+
+wordlist_exec() {
+while true; do
+    clear
+    echo
+    echo "   ╔══(1) default"
+    echo "   ╚══(2) elegir wordlist"
+    echo "   ║"
+    read -p "       ╚══════> " input
+
+    case $input in
+        1)
+            wordlist="/usr/share/dirb/wordlists/big.txt"
+            break
+            ;;
+        2)
+            set_wordlist
+            break
+            ;;
+        *)
+            echo "Opción no válida"
+            sleep 1
+            ;;
+    esac
+done
+}
+
+set_wordlist() {
+read -e -p "Elige la wordlist: " wordlist
+
+wordlist=$(eval echo "$wordlist")
+}
+
+# Ejecutar selector
+wordlist_exec
+
+# Ejecutar comando
+echo "Wordlist seleccionada: $wordlist"
+echo "Ejecutando en: $url"
+
+gobuster dir -u "$url" -w "$wordlist" -x php,html,txt

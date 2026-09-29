@@ -1,0 +1,2 @@
+200, http://web1337.inlanefreight.htb:32522/index.html
+200, http://web1337.inlanefreight.htb:32522/robots.txt
