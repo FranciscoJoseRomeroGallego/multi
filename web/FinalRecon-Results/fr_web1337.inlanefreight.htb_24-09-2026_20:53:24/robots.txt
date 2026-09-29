@@ -1,4 +1,0 @@
-http://web1337.inlanefreight.htb:31292/index.html
-http://web1337.inlanefreight.htb:31292/admin_h1dd3n
-http://web1337.inlanefreight.htb:31292/index-2.html
-http://web1337.inlanefreight.htb:31292/index-3.html

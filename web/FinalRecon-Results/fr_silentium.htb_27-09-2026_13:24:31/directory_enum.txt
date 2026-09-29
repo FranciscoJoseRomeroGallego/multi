@@ -1,1 +1,0 @@
-403, http://silentium.htb/assets

@@ -1,9 +1,0 @@
-Server: nginx
-Date: Sat, 26 Sep 2026 16:22:57 GMT
-Content-Type: text/html; charset=UTF-8
-Transfer-Encoding: chunked
-Connection: keep-alive
-Expires: Thu, 19 Nov 1981 08:52:00 GMT
-Cache-Control: no-store, no-cache, must-revalidate
-Pragma: no-cache
-PHPSESSID=2arllkp99tatsaobd2kq9oq5qp; path=/

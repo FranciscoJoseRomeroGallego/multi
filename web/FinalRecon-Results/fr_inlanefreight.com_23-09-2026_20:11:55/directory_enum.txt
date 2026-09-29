@@ -1,4 +1,0 @@
-200, http://inlanefreight.com/index.php
-200, http://inlanefreight.com/wp-content
-200, http://inlanefreight.com/wp-includes
-200, http://inlanefreight.com/wp-admin

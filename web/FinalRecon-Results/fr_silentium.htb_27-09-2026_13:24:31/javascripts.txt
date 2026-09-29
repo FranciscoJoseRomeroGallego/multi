@@ -1,1 +1,0 @@
-http://silentium.htb/assets/app.js
