@@ -11,7 +11,7 @@ SYSTEM_WORDLIST="/usr/share/wordlists/dirb/common.txt"
 #  DIRECTORIO DE RESULTADOS
 # ================================================================
 
-RESULTS_DIR="/home/user/herramientas/web/Vhosts_Discover"
+RESULTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/Vhosts_Discover"
 
 banner() {
     clear

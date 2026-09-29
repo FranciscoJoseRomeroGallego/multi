@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# Carpeta de diccionarios del propio repositorio (independiente de la ruta de descarga).
+DICT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/diccionarios"
+
 read -e -p "Elige la url: " url
 
 
@@ -18,15 +23,15 @@ while true; do
 
     case $input in
         1)
-            wordlist="/home/user//diccionarios/listado-webs/bourp-parameter.txt"
+            wordlist="$DICT_DIR/listado-webs/bourp-parameter.txt"
             break
             ;;
         2)
-            wordlist="/home/user//diccionarios/listado-webs/pathtraversal.txt"
+            wordlist="$DICT_DIR/listado-webs/pathtraversal.txt"
             break
             ;;
         3)  
-            wordlist="/home/user//diccionarios/listado-webs/subdominios3.txt"
+            wordlist="$DICT_DIR/listado-webs/subdominios3.txt"
             break
             ;;
         4)

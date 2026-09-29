@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Carpeta de diccionarios del propio repositorio (independiente de la ruta de descarga).
+DICT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/diccionarios"
+
 # Pedir datos
 read -p "Introduce La Contraseña : " pass
 read -p "Introduce la IP: " ip
@@ -10,7 +13,7 @@ echo "Ejecutando prueba con contraseña: $pass en IP: $ip"
 # Aquí puedes poner un comando legítimo de tu laboratorio
 # Ejemplo: comprobar conectividad SSH
 
-resultado=$(hydra -L ~/diccionarios/contraseñas/usuarios.txt -p $pass ssh://$ip)
+resultado=$(hydra -L "$DICT_DIR/contraseñas/usuarios.txt" -p $pass ssh://$ip)
 
 linea=$(echo "$resultado" | grep "login:")
 

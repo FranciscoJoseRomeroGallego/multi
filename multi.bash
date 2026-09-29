@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Directorio donde reside este script, independientemente de desde dónde se ejecute.
+# Permite que el proyecto funcione en cualquier ruta tras clonarlo o descargarlo.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 banner() {
 clear
 echo "   ███╗   ███╗██╗   ██╗██╗  ████████╗██╗    ████████╗ ██████╗  ██████╗ ██╗"
@@ -34,7 +38,7 @@ web() {
 while true; do
     clear
     banner
-    cd ~/herramientas/web/ || return
+    cd "$SCRIPT_DIR/web/" || return
     echo "Has seleccionado Ataques Web"
     echo
     echo "   ╚══(1) Gobuster(VHOST)"
@@ -325,7 +329,7 @@ finalrecon_menu() {
     # Todos los resultados se guardan en esta ubicación.
     # FinalRecon seguirá creando dentro su estructura habitual
     # (host/fecha/hora, según su comportamiento por defecto).
-    FR_EXPORT_DIR="/home/user/herramientas/web/FinalRecon-Results/"
+    FR_EXPORT_DIR="$SCRIPT_DIR/web/FinalRecon-Results/"
 
     args=(--url "$target")
 
@@ -362,7 +366,7 @@ finalrecon_menu() {
     printf ' %q' "${args[@]}"
     echo
     echo
-    cd /home/user/herramientas/web/FinalRecon
+    cd "$SCRIPT_DIR/web/FinalRecon" || { echo "   No se encuentra web/FinalRecon"; sleep 2; return; }
     source .venv/bin/activate
     ./finalrecon.py  "${args[@]}"
 
@@ -393,7 +397,7 @@ bruteforce() {
 while true; do
     clear
     banner
-    cd ~/herramientas/contraseñas/ || return
+    cd "$SCRIPT_DIR/contraseñas/" || return
     echo "Has seleccionado Ataques Web"
     echo
     echo "   ╚══(1) SSH"
